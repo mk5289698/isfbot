@@ -1,4 +1,4 @@
-const MelipayamakApi = require('melipayamak-api');
+const MelipayamakApi = require('melipayamak');
 const config = require('./config');
 
 const api = new MelipayamakApi(config.melipayamak.username, config.melipayamak.password);
