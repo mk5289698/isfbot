@@ -135,7 +135,7 @@ bot.on('message', async (msg) => {
       };
       addReservation(reservation);
 
-      const confirmText = `سلام ${d.name} جان! 🙏\nرزرو شما برای «${d.service}» در تاریخ ${d.datetimeText} با موفقیت ثبت شد.\nمنتظرتون هستیم.`;
+      const confirmText = `سلام ${d.name} جان! 🙏\nرزرو شما برای «${d.service}» در تاریخ ${d.datetimeText} با موفقیت ثبت شد.\nمنتظرتون هستیم لغو ۱۱. `;
 
       try {
         await sendSms(d.phone, confirmText);
