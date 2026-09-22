@@ -6,7 +6,7 @@ module.exports = {
   melipayamak: {
     username: '29133223446',
     password: 'cfbdb7f3-3fd1-4222-9d8e-f9cf33579223',
-    sender: '50004001334446'
+    sender: '50004001223446'
   },
 
   // چند ساعت قبل از موعد رزرو، پیامک یادآوری ارسال شود
