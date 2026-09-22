@@ -1,0 +1,15 @@
+{
+  "name": "telegram-reservation-sms-bot",
+  "version": "1.0.0",
+  "description": "بات تلگرام رزرواسیون با ارسال خودکار پیامک تأیید و یادآوری از طریق ملی پیامک",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js"
+  },
+  "dependencies": {
+    "node-telegram-bot-api": "^0.66.0",
+    "melipayamak-api": "^1.0.6",
+    "node-cron": "^3.0.3",
+    "jalaali-js": "^1.2.6"
+  }
+}
