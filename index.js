@@ -11,6 +11,21 @@ const bot = new TelegramBot(config.telegramBotToken, { polling: true });
 // وضعیت مکالمه‌ی هر چت (مرحله فعلی و اطلاعات جمع‌آوری‌شده)
 const sessions = {};
 
+// متن دکمه‌های ثابت پایین صفحه
+const BUTTON_NEW = '📝 ثبت درخواست جدید';
+const BUTTON_LIST = '📋 نمایش رزروها';
+
+const mainKeyboard = {
+  reply_markup: {
+    keyboard: [[BUTTON_NEW, BUTTON_LIST]],
+    resize_keyboard: true
+  }
+};
+
+function formatReservationLine(r, index) {
+  return `${index + 1}. 👤 ${r.name}\n   💼 ${r.service}\n   📅 ${r.datetimeText}\n   📞 ${r.phone}`;
+}
+
 function resetSession(chatId) {
   sessions[chatId] = { step: null, data: {} };
 }
@@ -43,7 +58,8 @@ bot.onText(/\/start/, (msg) => {
   resetSession(chatId);
   bot.sendMessage(
     chatId,
-    'سلام! 👋\nبرای ثبت رزرو جدید دستور /new را بزنید.\n\nآیدی عددی این چت: ' + chatId
+    'سلام! 👋\nبرای ثبت رزرو جدید روی دکمه‌ی زیر بزنید یا دستور /new را وارد کنید.\n\nآیدی عددی این چت: ' + chatId,
+    mainKeyboard
   );
 });
 
@@ -56,13 +72,32 @@ bot.onText(/\/new/, (msg) => {
 bot.onText(/\/cancel/, (msg) => {
   const chatId = msg.chat.id;
   resetSession(chatId);
-  bot.sendMessage(chatId, 'عملیات لغو شد.');
+  bot.sendMessage(chatId, 'عملیات لغو شد.', mainKeyboard);
 });
 
 bot.on('message', async (msg) => {
   const chatId = msg.chat.id;
   const text = msg.text;
-  if (!text || text.startsWith('/')) return;
+  if (!text) return;
+
+  if (text === BUTTON_NEW) {
+    sessions[chatId] = { step: 'name', data: {} };
+    bot.sendMessage(chatId, 'اسم مشتری را وارد کنید:');
+    return;
+  }
+
+  if (text === BUTTON_LIST) {
+    const all = getAll();
+    if (all.length === 0) {
+      bot.sendMessage(chatId, 'هنوز رزروی ثبت نشده.', mainKeyboard);
+      return;
+    }
+    const list = all.map(formatReservationLine).join('\n\n');
+    bot.sendMessage(chatId, `📋 لیست رزروهای ثبت‌شده:\n\n${list}`, mainKeyboard);
+    return;
+  }
+
+  if (text.startsWith('/')) return;
 
   const session = sessions[chatId];
   if (!session || !session.step) return;
@@ -137,7 +172,7 @@ bot.on('message', async (msg) => {
 
       const [dayPart, hourPart] = d.datetimeText.split(' ');
       const confirmText = `${d.name} عزیز 🎬
-رزرو شما برای ${d.service} در تاریخ ${dayPart} تاریخ از ساعت ${hourPart} با موفقیت انجام شد. ✅
+رزرو شما برای ${d.service} در تاریخ ${dayPart} از ساعت ${hourPart} با موفقیت انجام شد. ✅
 
 «اصفهان مدیا،همراه شما در دل اصفهان»
 لغو11`;
@@ -145,11 +180,12 @@ bot.on('message', async (msg) => {
       try {
         await sendSms(d.phone, confirmText);
         updateReservation(reservation.id, { confirmSent: true });
-        bot.sendMessage(chatId, '✅ رزرو ثبت شد و پیامک تأیید ارسال شد.');
+        bot.sendMessage(chatId, '✅ رزرو ثبت شد و پیامک تأیید ارسال شد.', mainKeyboard);
       } catch (err) {
         bot.sendMessage(
           chatId,
-          '⚠️ رزرو ذخیره شد اما ارسال پیامک با خطا مواجه شد:\n' + err.message
+          '⚠️ رزرو ذخیره شد اما ارسال پیامک با خطا مواجه شد:\n' + err.message,
+          mainKeyboard
         );
       }
       resetSession(chatId);
