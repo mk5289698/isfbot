@@ -135,16 +135,17 @@ bot.on('message', async (msg) => {
       };
       addReservation(reservation);
 
-      const confirmText = `سلام ${d.name} جان! 🙏\nرزرو شما برای «${d.service}» در تاریخ ${d.datetimeText} با موفقیت ثبت شد.\nمنتظرتون هستیم.`;
+      const [dayPart, hourPart] = d.datetimeText.split(' ');
+      const confirmText = `${d.name} عزیز 🎬
+رزرو شما برای ${d.service} در تاریخ ${dayPart} تاریخ از ساعت ${hourPart} با موفقیت انجام شد. ✅
+
+«اصفهان مدیا،همراه شما در دل اصفهان»
+لغو11`;
 
       try {
-        const result = await sendSms(d.phone, confirmText);
+        await sendSms(d.phone, confirmText);
         updateReservation(reservation.id, { confirmSent: true });
-        bot.sendMessage(
-          chatId,
-          '✅ رزرو ثبت شد و درخواست ارسال پیامک به ملی‌پیامک فرستاده شد.\nجواب وب‌سرویس: ' +
-            JSON.stringify(result)
-        );
+        bot.sendMessage(chatId, '✅ رزرو ثبت شد و پیامک تأیید ارسال شد.');
       } catch (err) {
         bot.sendMessage(
           chatId,
@@ -169,7 +170,11 @@ cron.schedule('* * * * *', async () => {
     const appointmentTime = new Date(r.datetime).getTime();
     if (now >= reminderTime && now < appointmentTime) {
       const hourPart = r.datetimeText.split(' ')[1] || '';
-      const text = `سلام ${r.name} جان! ⏰\nیادآوری می‌کنیم امروز ساعت ${hourPart} برای «${r.service}» منتظرتون هستیم.`;
+      const text = `سلام،
+امروز ساعت ${hourPart} برای ${r.service} خدمت میرسیم ${r.name} عزیز🙏🏻🤩
+
+«اصفهان مدیا،همراه شما در دل اصفهان»
+لغو11`;
       try {
         await sendSms(r.phone, text);
         updateReservation(r.id, { reminderSent: true });
