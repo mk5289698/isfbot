@@ -4,7 +4,7 @@ const jalaali = require('jalaali-js');
 
 const config = require('./config');
 const { sendSms } = require('./sms');
-const { addReservation, getAll, updateReservation } = require('./store');
+const { addReservation, getAll, updateReservation, pruneExpiredReservations, upsertCustomer, getAllCustomers } = require('./store');
 
 const bot = new TelegramBot(config.telegramBotToken, { polling: true });
 
@@ -14,16 +14,21 @@ const sessions = {};
 // متن دکمه‌های ثابت پایین صفحه
 const BUTTON_NEW = '📝 ثبت درخواست جدید';
 const BUTTON_LIST = '📋 نمایش رزروها';
+const BUTTON_FILM = '📤 ارسال فیلم';
 
 const mainKeyboard = {
   reply_markup: {
-    keyboard: [[BUTTON_NEW, BUTTON_LIST]],
+    keyboard: [[BUTTON_NEW, BUTTON_LIST], [BUTTON_FILM]],
     resize_keyboard: true
   }
 };
 
 function formatReservationLine(r, index) {
   return `${index + 1}. 👤 ${r.name}\n   💼 ${r.service}\n   📅 ${r.datetimeText}\n   📞 ${r.phone}`;
+}
+
+function formatCustomerLine(c, index) {
+  return `${index + 1}. ${c.name} - ${c.phone}`;
 }
 
 function resetSession(chatId) {
@@ -97,10 +102,49 @@ bot.on('message', async (msg) => {
     return;
   }
 
+  if (text === BUTTON_FILM) {
+    const customers = getAllCustomers();
+    if (customers.length === 0) {
+      bot.sendMessage(chatId, 'هنوز مشتری‌ای ثبت نشده.', mainKeyboard);
+      return;
+    }
+    sessions[chatId] = { step: 'filmSelect', data: { customersList: customers } };
+    const list = customers.map(formatCustomerLine).join('\n');
+    bot.sendMessage(
+      chatId,
+      `برای کدوم مشتری فیلم ارسال شده؟ عدد مربوطه رو بفرست:\n\n${list}\n\nبرای لغو: /cancel`
+    );
+    return;
+  }
+
   if (text.startsWith('/')) return;
 
   const session = sessions[chatId];
   if (!session || !session.step) return;
+
+  if (session.step === 'filmSelect') {
+    const index = Number(text.trim()) - 1;
+    const customers = session.data.customersList || [];
+    if (!Number.isInteger(index) || index < 0 || index >= customers.length) {
+      bot.sendMessage(chatId, 'عدد معتبر نیست. یکی از شماره‌های لیست رو بفرست، یا /cancel برای لغو.');
+      return;
+    }
+    const customer = customers[index];
+    const filmText = `سلام${customer.name}🙋‍♂️
+فیلم‌هات حاضر شد برات ارسال کردیم
+یه نگاه بهش بنداز😍
+
+«اصفهان مدیا،همراه شما در دل اصفهان»
+لغو11`;
+    try {
+      await sendSms(customer.phone, filmText);
+      bot.sendMessage(chatId, `✅ پیامک فیلم برای ${customer.name} ارسال شد.`, mainKeyboard);
+    } catch (err) {
+      bot.sendMessage(chatId, '⚠️ ارسال پیامک با خطا مواجه شد:\n' + err.message, mainKeyboard);
+    }
+    resetSession(chatId);
+    return;
+  }
 
   if (session.step === 'name') {
     session.data.name = text.trim();
@@ -180,6 +224,7 @@ bot.on('message', async (msg) => {
       try {
         await sendSms(d.phone, confirmText);
         updateReservation(reservation.id, { confirmSent: true });
+        upsertCustomer(d.name, d.phone);
         bot.sendMessage(chatId, '✅ رزرو ثبت شد و پیامک تأیید ارسال شد.', mainKeyboard);
       } catch (err) {
         bot.sendMessage(
@@ -222,6 +267,9 @@ cron.schedule('* * * * *', async () => {
       }
     }
   }
+
+  // رزروهایی که زمانشون گذشته کلا از فایل حذف بشن
+  pruneExpiredReservations(now);
 });
 
 console.log('بات رزرواسیون فعال است...');
