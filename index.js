@@ -138,9 +138,13 @@ bot.on('message', async (msg) => {
       const confirmText = `سلام ${d.name} جان! 🙏\nرزرو شما برای «${d.service}» در تاریخ ${d.datetimeText} با موفقیت ثبت شد.\nمنتظرتون هستیم.`;
 
       try {
-        await sendSms(d.phone, confirmText);
+        const result = await sendSms(d.phone, confirmText);
         updateReservation(reservation.id, { confirmSent: true });
-        bot.sendMessage(chatId, '✅ رزرو ثبت شد و پیامک تأیید ارسال شد.');
+        bot.sendMessage(
+          chatId,
+          '✅ رزرو ثبت شد و درخواست ارسال پیامک به ملی‌پیامک فرستاده شد.\nجواب وب‌سرویس: ' +
+            JSON.stringify(result)
+        );
       } catch (err) {
         bot.sendMessage(
           chatId,
